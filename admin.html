@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Secure teacher dashboard for reviewing Ray of Hopes student assessments and managing questions." />
+  <meta name="theme-color" content="#174b48" />
+  <title>Teacher Portal — Ray of Hopes</title>
+
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'Noto Sans', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Supabase JS Client v2 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+
+<body class="bg-gray-50 text-gray-900 min-h-screen font-sans antialiased teacher-body">
+  
+  <!-- ======================== HEADER ======================== -->
+  <a id="admin-skip-link" href="#screen-login" class="admin-skip-link">Skip to main content</a>
+  <header class="teacher-header" role="banner">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="teacher-brand-mark" aria-hidden="true">R</div>
+        <div><h1 class="text-lg font-bold leading-tight">Ray of Hopes</h1><p class="text-sm text-teal-100">Teacher Portal · Student assessments</p></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="teacher-home-link">Portal home</a>
+      <div id="auth-controls" class="hidden flex items-center gap-3">
+        <span id="current-user" class="text-sm text-teal-50"></span>
+        <button id="btn-logout" class="teacher-secondary-button">
+          Log Out
+        </button>
+      </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================== LOGIN SCREEN ======================== -->
+  <main id="screen-login" class="screen active max-w-md mx-auto px-4 py-16" aria-labelledby="login-title">
+    <div class="teacher-login-card">
+      <div class="teacher-login-icon" aria-hidden="true">🔐</div>
+      <h2 id="login-title" class="text-2xl font-bold text-gray-900 mb-2 text-center">Teacher sign in</h2>
+      <p class="text-center text-gray-600 mb-6">Use your authorised Ray of Hopes staff account to access student records.</p>
+      <div class="teacher-auth-switch" role="tablist" aria-label="Teacher account access">
+        <button type="button" id="auth-mode-login" class="active" role="tab" aria-selected="true">Sign in</button>
+        <button type="button" id="auth-mode-register" role="tab" aria-selected="false">Register</button>
+      </div>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="login-username" class="block text-sm font-semibold text-gray-700 mb-1">Username</label>
+          <input type="text" id="login-username" autocomplete="username" required class="w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+          <input type="password" id="login-password" autocomplete="current-password" required class="w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <p id="login-error" class="text-red-600 text-sm hidden" role="alert" aria-live="polite"></p>
+        <button type="submit" id="btn-login" class="teacher-primary-button w-full">
+          Sign In
+        </button>
+      </form>
+      <form id="register-form" class="space-y-4 hidden" novalidate>
+        <p class="text-sm text-gray-600">Create a teacher account. Registration is restricted to staff who have the registration key.</p>
+        <div><label for="register-username" class="block text-sm font-semibold text-gray-700 mb-1">Username</label>
+          <input type="text" id="register-username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9._-]{3,32}" required class="w-full border border-gray-300 rounded px-3 py-2" aria-describedby="username-hint" />
+          <p id="username-hint" class="mt-1 text-xs text-gray-500">3–32 characters: letters, numbers, dot, underscore or hyphen.</p>
+        </div>
+        <div><label for="register-password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+          <input type="password" id="register-password" autocomplete="new-password" minlength="8" required class="w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <div><label for="register-phone" class="block text-sm font-semibold text-gray-700 mb-1">Phone number</label>
+          <input type="tel" id="register-phone" autocomplete="tel" inputmode="tel" placeholder="+919876543210" pattern="\+[1-9][0-9]{7,14}" required class="w-full border border-gray-300 rounded px-3 py-2" aria-describedby="phone-hint" />
+          <p id="phone-hint" class="mt-1 text-xs text-gray-500">Include country code, for example +91 followed by your number.</p>
+        </div>
+        <div><label for="register-key" class="block text-sm font-semibold text-gray-700 mb-1">Registration key</label>
+          <input type="password" id="register-key" autocomplete="off" required class="w-full border border-gray-300 rounded px-3 py-2" />
+        </div>
+        <p id="register-error" class="text-red-600 text-sm hidden" role="alert" aria-live="polite"></p>
+        <button type="submit" id="btn-register" class="teacher-primary-button w-full">Create teacher account</button>
+      </form>
+      <p id="auth-message" class="mt-4 text-sm hidden" role="status" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <!-- ======================== MAIN ADMIN LAYOUT ======================== -->
+  <div id="screen-admin" class="screen hidden" role="main" aria-label="Teacher dashboard" tabindex="-1">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+      
+      <!-- Tabs -->
+      <div class="teacher-tabs" role="tablist" aria-label="Teacher portal sections">
+        <button id="tab-button-dashboard" type="button" role="tab" aria-controls="tab-dashboard" aria-selected="true" tabindex="0" class="tab-btn active" data-tab="dashboard">Student results</button>
+        <button id="tab-button-questions" type="button" role="tab" aria-controls="tab-questions" aria-selected="false" tabindex="-1" class="tab-btn" data-tab="questions">Question manager</button>
+      </div>
+
+      <!-- DASHBOARD TAB -->
+      <section id="tab-dashboard" class="tab-content active" role="tabpanel" aria-labelledby="tab-button-dashboard" tabindex="0">
+        <div class="teacher-page-heading">
+          <div>
+          <h2 class="text-2xl font-bold text-gray-900">Student assessments</h2>
+          <p class="text-gray-600">Review submitted results and the supports selected by each student.</p>
+          </div><span class="secure-label">🔒 Staff only</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+          <div class="teacher-metric"><p>Matching assessments</p><strong id="metric-assessments">—</strong></div>
+          <div class="teacher-metric"><p>Average on this page</p><strong id="metric-average">—</strong></div>
+          <div class="teacher-metric"><p>Page</p><strong id="metric-latest">—</strong></div>
+        </div>
+        <div class="teacher-panel">
+          <div class="flex flex-wrap gap-4 items-end mb-6">
+            <div class="flex-1 min-w-[200px]">
+              <label class="block text-sm font-semibold text-gray-700 mb-1">Search Name</label>
+              <input type="search" id="filter-name" placeholder="Type a student name" autocomplete="off" class="w-full border border-gray-300 rounded px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label for="filter-level" class="block text-sm font-semibold text-gray-700 mb-1">Level</label>
+              <select id="filter-level" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                <option value="">All Levels</option>
+                <option value="primary">Primary</option>
+                <option value="middle">Middle</option>
+                <option value="secondary">Secondary</option>
+                <option value="higher">Higher</option>
+                <option value="graduate">Graduate</option>
+              </select>
+            </div>
+            <div>
+              <button id="btn-refresh-dashboard" class="teacher-secondary-button">Refresh</button>
+              <button id="btn-export-csv" class="teacher-primary-button">Export CSV</button>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm whitespace-nowrap teacher-table">
+              <thead class="bg-gray-50 text-gray-700 border-b">
+                <tr>
+                  <th class="p-3 font-semibold">Date</th>
+                  <th class="p-3 font-semibold">Name</th>
+                  <th class="p-3 font-semibold">Level</th>
+                  <th class="p-3 font-semibold">Category</th>
+                  <th class="p-3 font-semibold">Support selected</th>
+                  <th class="p-3 font-semibold">Score</th>
+                  <th class="p-3 font-semibold">Pathway</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-tbody" class="divide-y divide-gray-100">
+                <!-- Data injected here -->
+              </tbody>
+            </table>
+          </div>
+          <div id="dashboard-status" class="mt-4 text-sm text-gray-500 text-center" role="status" aria-live="polite">Loading...</div>
+          <div class="teacher-pagination" aria-label="Assessment results pages">
+            <button id="btn-page-previous" type="button" class="teacher-secondary-button" disabled>← Previous</button>
+            <span id="dashboard-page-info" aria-live="polite">Page 1</span>
+            <button id="btn-page-next" type="button" class="teacher-secondary-button" disabled>Next →</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- QUESTIONS TAB -->
+      <section id="tab-questions" class="tab-content hidden" role="tabpanel" aria-labelledby="tab-button-questions" tabindex="0">
+        <div class="bg-white rounded-xl shadow p-6">
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex gap-4 items-center">
+              <div>
+                <label for="qfilter-level" class="block text-sm font-semibold text-gray-700 mb-1">Level</label>
+                <select id="qfilter-level" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                  <option value="primary">Primary</option>
+                  <option value="middle">Middle</option>
+                  <option value="secondary">Secondary</option>
+                  <option value="higher">Higher</option>
+                  <option value="graduate">Graduate</option>
+                </select>
+              </div>
+              <div>
+                <label for="qfilter-section" class="block text-sm font-semibold text-gray-700 mb-1">Section</label>
+                <select id="qfilter-section" class="border border-gray-300 rounded px-3 py-2 text-sm">
+                  <option value="Basic Computers">Basic Computers</option>
+                  <option value="English">English</option>
+                  <option value="Aptitude">Aptitude</option>
+                  <option value="Logical Reasoning">Logical Reasoning</option>
+                  <option value="General Awareness">General Awareness</option>
+                </select>
+              </div>
+            </div>
+            <button id="btn-add-question" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors">
+              + Add Question
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-gray-700 border-b">
+                <tr>
+                  <th class="p-3 font-semibold w-1/2">Question</th>
+                  <th class="p-3 font-semibold">Options / Correct</th>
+                  <th class="p-3 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="questions-tbody" class="divide-y divide-gray-100">
+                <!-- Data injected here -->
+              </tbody>
+            </table>
+          </div>
+          <div id="questions-status" class="mt-4 text-sm text-gray-500 text-center">Loading...</div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- QUESTION MODAL -->
+  <div id="question-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+      <h3 id="modal-title" class="text-xl font-bold mb-4">Add Question</h3>
+      <form id="question-form" class="space-y-4">
+        <input type="hidden" id="modal-id" />
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label for="modal-level" class="block text-sm font-semibold text-gray-700 mb-1">Level</label>
+            <select id="modal-level" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+              <option value="primary">Primary</option>
+              <option value="middle">Middle</option>
+              <option value="secondary">Secondary</option>
+              <option value="higher">Higher</option>
+              <option value="graduate">Graduate</option>
+            </select>
+          </div>
+          <div>
+            <label for="modal-section" class="block text-sm font-semibold text-gray-700 mb-1">Section</label>
+            <select id="modal-section" required class="w-full border border-gray-300 rounded px-3 py-2 text-sm">
+              <option value="Basic Computers">Basic Computers</option>
+              <option value="English">English</option>
+              <option value="Aptitude">Aptitude</option>
+              <option value="Logical Reasoning">Logical Reasoning</option>
+              <option value="General Awareness">General Awareness</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label for="modal-question" class="block text-sm font-semibold text-gray-700 mb-1">Question Text</label>
+          <textarea id="modal-question" required rows="2" class="w-full border border-gray-300 rounded px-3 py-2 text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Options &amp; Correct Answer</label>
+          <div class="space-y-2" id="modal-options">
+            <div class="flex items-center gap-2">
+              <input type="radio" name="modal-correct" value="0" aria-label="Mark option 1 as correct" required checked class="w-4 h-4 text-blue-600" />
+              <input type="text" class="modal-opt w-full border border-gray-300 rounded px-3 py-1 text-sm" aria-label="Option 1 text" placeholder="Option 1" required />
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="radio" name="modal-correct" value="1" aria-label="Mark option 2 as correct" required class="w-4 h-4 text-blue-600" />
+              <input type="text" class="modal-opt w-full border border-gray-300 rounded px-3 py-1 text-sm" aria-label="Option 2 text" placeholder="Option 2" required />
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="radio" name="modal-correct" value="2" aria-label="Mark option 3 as correct" required class="w-4 h-4 text-blue-600" />
+              <input type="text" class="modal-opt w-full border border-gray-300 rounded px-3 py-1 text-sm" aria-label="Option 3 text" placeholder="Option 3" required />
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="radio" name="modal-correct" value="3" aria-label="Mark option 4 as correct" required class="w-4 h-4 text-blue-600" />
+              <input type="text" class="modal-opt w-full border border-gray-300 rounded px-3 py-1 text-sm" aria-label="Option 4 text" placeholder="Option 4" required />
+            </div>
+          </div>
+        </div>
+        <p id="modal-status" class="hidden text-sm" role="alert" aria-live="polite"></p>
+        <div class="flex justify-end gap-3 mt-6">
+          <button type="button" id="btn-modal-cancel" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm font-medium transition-colors">Cancel</button>
+          <button type="submit" id="btn-modal-save" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors">Save Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/admin/auth.js"></script>
+  <script src="js/admin/dashboard.js"></script>
+  <script src="js/admin/questions-manager.js"></script>
+  <script src="js/admin/admin-app.js"></script>
+</body>
+</html>
